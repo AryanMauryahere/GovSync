@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     "codex-preview": "development",
   },
   icons: {
-    icon: "GovSync-Logo-removebg-preview.png",
-    shortcut: "GovSync-Logo-removebg-preview.png",
+    icon: "public/govsync-icon.png",
+    shortcut: "public/govsync-icon.png",
   },
 };
 
