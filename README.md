@@ -1,10 +1,55 @@
-# GovSync — citizen and administration portal
+# GovSync
 
-A working prototype with separate citizen and administrator accounts, Scholarship and Residence / Domicile services, and English, Hindi and Marathi. The cream, navy and terracotta design follows your login reference; the citizen home follows your service-dashboard layout.
+GovSync is a prototype citizen-services portal for submitting, validating, and tracking government-service applications in one place.
+
+It demonstrates two connected workflows:
+
+- **Residence / Domicile Certificate** applications
+- **Scholarship** applications
+
+The project includes separate citizen and administrator experiences, consent-based data sharing, server-side validation, application tracking, decision history, English/Hindi/Marathi translations, and a local Cloudflare D1 database.
+
+> **Prototype notice:** GovSync uses fictional records and illustrative rules. It does not verify real identities, connect to live government systems, send OTPs or messages, issue real certificates, or process scholarship payments.
+
+## What you can explore
+
+### Citizen experience
+
+- Create an account with a mobile number and password
+- Save a one-time recovery code
+- Select a service and grant department permissions
+- Review normalized information from fictional department sources
+- Submit, track, clarify, or revoke an application
+- View notifications and a clearly marked demonstration certificate
+- Switch between English, Hindi, and Marathi
+
+### Administrator experience
+
+- Review submitted applications in a queue
+- Inspect source records and normalized field mappings
+- Approve, reject, or request clarification
+- Record a decision note and show the result in the citizen's history
+
+### Demonstration scenarios
+
+The sample citizens are fictional:
+
+| Citizen | Scholarship scenario |
+| --- | --- |
+| Asha Sharma | Eligible demonstration case |
+| Rohan Patil | Income exceeds the demonstration limit |
+| Meera Joshi | Conflicting dates of birth |
+
+The Residence flow also includes optional address-mismatch and department-outage scenarios so the validation and recovery behavior can be demonstrated.
 
 ## Run locally
 
-Use Node.js 22.18+ (Node.js 24 recommended).
+### Requirements
+
+- Node.js 22.13 or newer
+- npm
+
+### Setup
 
 ```sh
 npm run install:ci
@@ -13,87 +58,118 @@ node scripts/create-admin.mjs
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Open the Local URL printed by the server, normally http://127.0.0.1:5173. If PowerShell blocks npm.ps1, use npm.cmd.
+Open the local URL printed by the development server, normally `http://127.0.0.1:5173`.
 
-The administrator setup asks for a name, 10-digit mobile number and a hidden password of at least 12 characters. It writes ignored local files; restart the server after changing them. To generate a random demonstration administrator instead:
+The administrator setup asks for a display name, a 10-digit mobile number, and a password of at least 12 characters. It writes local credential files that are ignored by Git. For a disposable demonstration administrator, use:
 
 ```sh
 node scripts/create-admin.mjs --generate-demo
 ```
 
-Read **.private/ADMIN-LOGIN.txt** for that generated login. Never publish .private or .dev.vars. The source ZIP intentionally contains no reusable administrator password.
+Read `.private/ADMIN-LOGIN.txt` for the generated login. Never publish `.private/`, `.dev.vars`, or any other environment file.
 
-## How login works
+If PowerShell blocks `npm.ps1`, use `npm.cmd` instead.
 
-- **Citizens:** choose Create an account, enter a name, mobile number and password, and save the recovery code. Sign in opens the service dashboard. Each account sees only its own applications, permissions and activity.
-- **Administration:** select Administration Login and use the separately provisioned credentials. The dashboard shows submitted requests from citizens. Administrators can approve, reject or request clarification. Citizens cannot call these decision endpoints.
-- **Forgot password:** citizens use their saved recovery code to choose a new password. This invalidates existing sessions and issues a replacement recovery code. Lost both password and recovery code? There is no automatic recovery by mobile number alone.
-- **Sign out:** revokes the server session and removes the cookie. Sessions expire after eight hours. Passwords use salted scrypt hashes. Session tokens live in HttpOnly cookies, not localStorage.
-- Mobile numbers are login identifiers; there is **no SMS verification or OTP provider** in this prototype.
+## Try the main flow
 
-See [AUTHENTICATION.md](AUTHENTICATION.md) for architecture, account provisioning, recovery, migration and deployment details.
+1. Create a citizen account, or choose a sample citizen from the login screen.
+2. Open **Services** and start a Residence or Scholarship application.
+3. Grant the requested permissions and review the fictional source information.
+4. Validate the application, confirm the declaration, and submit it.
+5. Sign out and use **Administration Login** in a separate browser profile.
+6. Review the application and approve, reject, or request clarification.
+7. Return to the citizen account to view the decision, notification, and tracking history.
 
-## Demonstrate the two roles
+For the full walkthrough, see [DEMO-GUIDE.md](DEMO-GUIDE.md).
 
-1. Create a citizen account and save its recovery code.
-2. Open Certificates, choose a sample applicant, and grant the required consent.
-3. Review verified information, continue to review, confirm and submit.
-4. Sign out. Sign in as an administrator (or use a separate browser profile).
-5. Approve, reject or request clarification from the review queue.
-6. Return to the citizen account, open My applications and view the result. Approved Residence requests have a clearly marked demonstration certificate.
-7. Start a Scholarship request and reuse approved residence information when consent is active.
+## Architecture
 
-The administrator queue refreshes every 15 seconds. An open submitted application refreshes every 10 seconds. You can also reload the page.
-
-All department profiles are fictional sample records. Creating an account does not verify a person's real identity or connect to government databases. Scholarship approval is a prototype decision, not a payment. Certificates are demonstration-only.
-
-## Edit colors and images
-
-Start with [CUSTOMIZATION.md](CUSTOMIZATION.md).
-
-| Change | File |
-| --- | --- |
-| Palette, heading font, shared illustration | app/theme.css |
-| Login and dashboard layout | app/auth-theme.css |
-| Application form and table layout | app/globals.css |
-| Brand name and logo path | app/site-config.ts |
-| Login fields and account-recovery screens | app/login.tsx |
-| Citizen dashboard and navigation | app/portal.tsx |
-| Existing application translations | app/i18n.tsx |
-| Login/dashboard translations | app/auth-translations.ts |
-| Images | public/images/ |
-
-## Database upgrade
-
-A fresh local copy uses `node scripts/setup-local.mjs`, which applies and records migrations. It is safe to run again.
-
-**If you already have a local database from an earlier archive initialized with direct SQL commands**, back it up first. Do not replay migrations 0000 and 0001. Build the project, then apply only the new accounts migration once:
-
-```sh
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_spooky_gwen_stacy.sql
+```text
+Citizen portal
+    │
+    ├── consent and permissions
+    ├── fictional department sources
+    └── application form
+            │
+            ▼
+GovSync API → normalization and validation → Cloudflare D1
+            │
+            ▼
+Administrator review → decision and audit history → citizen tracking
 ```
 
-Old applications retain their original owner IDs. They are not silently assigned to new mobile accounts. Use a new application for the new account demonstration.
+The application is built with:
+
+- React 19 and TypeScript
+- Next-compatible routing through Vinext and Vite
+- Cloudflare Workers runtime and D1
+- Drizzle ORM and SQL migrations
+- Zod validation
+- Tailwind CSS and reusable UI components
+
+## Project structure
+
+| Path | Purpose |
+| --- | --- |
+| `app/` | Pages, layouts, API routes, styling, translations, and application views |
+| `components/` | Reusable UI components |
+| `db/` | Database connection and schema |
+| `drizzle/` | Versioned D1 migrations |
+| `lib/` | Authentication, demo data, validation, and server helpers |
+| `public/` | Browser-served images, icons, and static documentation |
+| `scripts/` | Local setup, administrator provisioning, and test scripts |
+| `hooks/` | Shared React hooks |
+| `vendor/` | Vendored CSS and license information |
+
+## Documentation
+
+- [DEMO-GUIDE.md](DEMO-GUIDE.md) — detailed citizen and administrator walkthrough
+- [AUTHENTICATION.md](AUTHENTICATION.md) — account model, sessions, recovery, roles, and deployment requirements
+- [BACKEND-GUIDE.md](BACKEND-GUIDE.md) — workflows, API behavior, data mappings, and validation scenarios
+- [CUSTOMIZATION.md](CUSTOMIZATION.md) — colors, branding, illustrations, layout, and translations
 
 ## Checks
 
-With a local server and a generated demo administrator:
+With a local server and a generated demonstration administrator:
 
 ```sh
 node scripts/test-auth-flow.mjs
 node scripts/test-i18n.mjs
 node scripts/test-validation.mjs
+npm run lint
 npm run build
 ```
 
-The auth test defaults to port 5177; set TEST_BASE_URL to your Local URL if different. The older test-api.mjs and test-residence.mjs default to 5173 and now use real citizen/admin accounts. Tests create fictional records in the local database only. For a manually provisioned admin, set TEST_ADMIN_PASSWORD in your terminal for the test process; never commit it. Repeated login tests can trigger the intended 15-minute attempt limit.
+The test scripts use fictional records in the local database. They do not target hosted URLs.
 
-## Hosting
+## Security and deployment boundaries
 
-The existing Sites project identity is retained in .openai/hosting.json. Hosting access and GovSync account roles are separate: the currently private Site remains private. App registration does not grant access to the private Site itself.
+This repository is suitable for demonstrating the product concept, not for handling real citizen data. Before any real deployment, add verified identity and phone enrollment, administrator MFA, department-scoped permissions, operational account recovery, abuse monitoring, data retention controls, audit operations, and a formal security review.
 
-For a deployment you operate, set the **secret** GOVSYNC_ADMIN_ACCOUNT to the exact JSON from .private/admin-account.json and deploy. Never copy that value into source or the hosting manifest. See AUTHENTICATION.md.
+Important limitations:
 
-## Administrator data mappings
-After signing in as administrator, open Data mappings and select a submitted application. The department tabs show the saved original response, standardized record, and a field-by-field comparison. No citizen browser session or new department API call is required. Draft applications remain private. Labels support English, Hindi and Marathi; raw record values stay unchanged.
+- Mobile numbers are login identifiers, not verified phone ownership.
+- Sample-citizen login is enabled for demonstrations and should be disabled for a real deployment with `GOVSYNC_DEMO_LOGIN=off`.
+- The administrator account is provisioned out-of-band; there is no public administrator registration.
+- The certificate is demonstration-only.
+- No email, SMS, Aadhaar, payment, or live government API integration is included.
+
+## Before publishing this repository
+
+Do not commit or upload:
+
+- `.private/`
+- `.dev.vars` or any `.env*` file
+- `.wrangler/`
+- `node_modules/`
+- `dist/`, `.next/`, `out/`, or other generated build output
+- local database files, exports, backups, or test data
+- logs, coverage output, or editor/agent work directories
+
+These paths are already covered by `.gitignore` where appropriate. Review the repository history as well: deleting a secret from the current tree does not remove it from old commits.
+
+The tracked `.openai/hosting.json` contains deployment metadata rather than credentials. Remove the `.openai/` directory before publishing if this repository should not retain its original hosting project association. Keep it only when the deployment integration is intentionally part of the public project.
+
+## License
+
+No open-source license has been declared yet. Add a `LICENSE` file before accepting external contributions or communicating reuse permissions.
