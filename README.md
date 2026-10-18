@@ -49,6 +49,22 @@ The Residence flow also includes optional address-mismatch and department-outage
 - Node.js 22.13 or newer
 - npm
 
+### Clone the repository
+
+Using HTTPS:
+
+```sh
+git clone https://github.com/AryanMauryahere/GovSync.git
+cd GovSync
+```
+
+Or, if you have SSH configured:
+
+```sh
+git clone git@github.com:AryanMauryahere/GovSync.git
+cd GovSync
+```
+
 ### Setup
 
 ```sh
