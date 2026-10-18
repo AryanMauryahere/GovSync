@@ -4,7 +4,7 @@ A working prototype with separate citizen and administrator accounts, Scholarshi
 
 ## Run locally
 
-Use Node.js 22.18+ (Node.js 24 recommended). Extract the ZIP and open a terminal in the folder containing package.json.
+Use Node.js 22.18+ (Node.js 24 recommended).
 
 ```sh
 npm run install:ci
